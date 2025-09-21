@@ -11,7 +11,7 @@
     
         <style>
             :root {
-                --bg-color: #1d242b;
+                --bg-color: #1a1f2b;
                 --primary-color: #2c3e50;
                 --secondary-color: #34495e;
                 --accent-color: #008080;
@@ -77,10 +77,10 @@
         
             #soundboard {
                 display: grid;
-                grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+                grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
                 gap: 1.5rem;
                 text-transform: uppercase;
-                max-width: 1600px; 
+                max-width: 1400px; 
                 margin: 2rem auto;
             }
         
@@ -88,9 +88,9 @@
                 background-color: var(--primary-color);
                 border: 2px solid var(--secondary-color);
                 color: var(--text-color);
-                padding: 1.5rem 1rem;
+                padding: 1.25rem 1rem;
                 cursor: pointer;
-                border-radius: 50px; 
+                border-radius: 30px; 
                 font-size: 0.75rem;
                 font-weight: 400;
                 letter-spacing: 1px;
@@ -135,7 +135,7 @@
 
     <h1>
         mood
-        <button id="sleepTimerButton">30:00 TIMER</button>
+        <button id="sleepTimerButton">30:00</button>
     </h1>
     <div id="soundboard">
         </div>
@@ -165,7 +165,7 @@
                     const seconds = timeRemaining % 60;
                     // Pad seconds with a leading zero if needed
                     const formattedSeconds = seconds < 10 ? '0' + seconds : seconds;
-                    sleepTimerButton.textContent = `SLEEP ${minutes}:${formattedSeconds}`;
+                    sleepTimerButton.textContent = `${minutes}:${formattedSeconds}`;
                 }
         
                 function startSleepTimer() {
