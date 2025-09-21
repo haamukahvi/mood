@@ -84,129 +84,124 @@
     <div id="soundboard">
         </div>
 
-    <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            const soundboard = document.getElementById('soundboard');
-            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-            const activeTracks = {};
-
-            const repoOwner = 'haamukahvi';
-            const repoName = 'mood';
-            const tracksPath = 'tracks';
-            const FADE_DURATION = 2; // Fade time in seconds
-
-            async function getTrackList() {
-                const apiUrl = `https://api.github.com/repos/${repoOwner}/${repoName}/contents/${tracksPath}`;
-                try {
-                    const response = await fetch(apiUrl);
-                    const data = await response.json();
-                    return data
-                        .filter(file => file.type === 'file' && /\.(mp3|ogg|wav)$/i.test(file.name))
-                        .map(file => file.download_url);
-                } catch (error) {
-                    console.error('Error fetching track list:', error);
-                    soundboard.innerHTML = '<p style="color: #e74c3c;">Failed to load tracks from GitHub. Please check the repository path and make sure it\'s public.</p>';
-                    return [];
+        <script>
+            document.addEventListener('DOMContentLoaded', () => {
+                const soundboard = document.getElementById('soundboard');
+                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                const activeTracks = {};
+        
+                const repoOwner = 'haamukahvi';
+                const repoName = 'mood';
+                const tracksPath = 'tracks';
+                const FADE_DURATION = 2; // Fade time in seconds
+                const MIN_VOLUME = 0.0001; // A tiny value, effectively silent
+        
+                async function getTrackList() {
+                    const apiUrl = `https://api.github.com/repos/${repoOwner}/${repoName}/contents/${tracksPath}`;
+                    try {
+                        const response = await fetch(apiUrl);
+                        const data = await response.json();
+                        return data
+                            .filter(file => file.type === 'file' && /\.(mp3|ogg|wav)$/i.test(file.name))
+                            .map(file => file.download_url);
+                    } catch (error) {
+                        console.error('Error fetching track list:', error);
+                        soundboard.innerHTML = '<p style="color: #e74c3c;">Failed to load tracks from GitHub. Please check the repository path and make sure it\'s public.</p>';
+                        return [];
+                    }
                 }
-            }
-
-            function createTrackButton(url) {
-                const fileName = decodeURIComponent(url.split('/').pop().replace(/\.\w+$/, ''));
-                const button = document.createElement('button');
-                button.className = 'track-button';
-                button.textContent = fileName.replace(/_/g, ' '); // Replace underscores with spaces for readability
-                button.dataset.url = url;
-
-                button.addEventListener('click', () => {
-                    // Prevent action if the audio context is not running (e.g., requires user interaction)
-                    if (audioContext.state === 'suspended') {
-                        audioContext.resume();
-                    }
-
-                    if (activeTracks[url]) {
-                        stopTrack(url);
-                    } else {
-                        playTrack(url, button);
-                    }
-                });
-
-                soundboard.appendChild(button);
-            }
-
-            async function playTrack(url, button) {
-                // --- FIX: Disable button during transition ---
-                button.disabled = true;
-
-                const audio = new Audio(url);
-                audio.crossOrigin = "anonymous";
-                audio.loop = true;
-
-                const source = audioContext.createMediaElementSource(audio);
-                const gainNode = audioContext.createGain();
-                gainNode.gain.setValueAtTime(0, audioContext.currentTime);
-
-                source.connect(gainNode);
-                gainNode.connect(audioContext.destination);
-
-                try {
-                    await audio.play();
-                    gainNode.gain.linearRampToValueAtTime(1, audioContext.currentTime + FADE_DURATION);
-
-                    activeTracks[url] = { audio, source, gainNode, button };
-                    button.classList.add('active');
-
-                    // --- FIX: Re-enable button after fade-in is complete ---
-                    setTimeout(() => {
-                        // Only re-enable if the track is still supposed to be active
-                        if (activeTracks[url]) {
-                            button.disabled = false;
+        
+                function createTrackButton(url) {
+                    const fileName = decodeURIComponent(url.split('/').pop().replace(/\.\w+$/, ''));
+                    const button = document.createElement('button');
+                    button.className = 'track-button';
+                    button.textContent = fileName.replace(/_/g, ' ');
+                    button.dataset.url = url;
+        
+                    button.addEventListener('click', () => {
+                        if (audioContext.state === 'suspended') {
+                            audioContext.resume();
                         }
+        
+                        if (activeTracks[url]) {
+                            stopTrack(url);
+                        } else {
+                            playTrack(url, button);
+                        }
+                    });
+        
+                    soundboard.appendChild(button);
+                }
+        
+                async function playTrack(url, button) {
+                    button.disabled = true;
+        
+                    const audio = new Audio(url);
+                    audio.crossOrigin = "anonymous";
+                    audio.loop = true;
+        
+                    const source = audioContext.createMediaElementSource(audio);
+                    const gainNode = audioContext.createGain();
+                    
+                    // --- CHANGED: Set starting volume to the minimum for exponential ramp ---
+                    gainNode.gain.setValueAtTime(MIN_VOLUME, audioContext.currentTime);
+        
+                    source.connect(gainNode);
+                    gainNode.connect(audioContext.destination);
+        
+                    try {
+                        await audio.play();
+                        
+                        // --- CHANGED: Use exponentialRamp for a natural-sounding fade-in ---
+                        gainNode.gain.exponentialRampToValueAtTime(1, audioContext.currentTime + FADE_DURATION);
+        
+                        activeTracks[url] = { audio, source, gainNode, button };
+                        button.classList.add('active');
+        
+                        setTimeout(() => {
+                            if (activeTracks[url]) {
+                                button.disabled = false;
+                            }
+                        }, FADE_DURATION * 1000);
+        
+                    } catch (err) {
+                        console.error("Playback failed:", err);
+                        button.disabled = false; 
+                    }
+                }
+        
+                function stopTrack(url) {
+                    const track = activeTracks[url];
+                    if (!track) return;
+        
+                    track.button.disabled = true;
+                    track.button.classList.remove('active');
+        
+                    // --- CHANGED: Use exponentialRamp for a natural-sounding fade-out ---
+                    track.gainNode.gain.exponentialRampToValueAtTime(MIN_VOLUME, audioContext.currentTime + FADE_DURATION);
+                    
+                    setTimeout(() => {
+                        track.audio.pause();
+                        track.source.disconnect();
+                        
+                        delete activeTracks[url];
+                        
+                        track.button.disabled = false; 
                     }, FADE_DURATION * 1000);
-
-                } catch (err) {
-                    console.error("Playback failed:", err);
-                    // Re-enable button on error
-                    button.disabled = false; 
                 }
-            }
-
-            function stopTrack(url) {
-                const track = activeTracks[url];
-                if (!track) return;
-
-                // --- FIX: Disable button during transition ---
-                track.button.disabled = true;
-                track.button.classList.remove('active');
-
-                track.gainNode.gain.linearRampToValueAtTime(0, audioContext.currentTime + FADE_DURATION);
-                
-                // --- FIX: Delay cleanup until after fade-out ---
-                // This is the most critical change. We wait for the fade to finish before
-                // pausing the audio and deleting the track from our active list.
-                setTimeout(() => {
-                    track.audio.pause();
-                    track.source.disconnect();
-                    
-                    // --- FIX: Correctly manage state AFTER the fade ---
-                    delete activeTracks[url];
-                    
-                    // Re-enable the button so it can be played again
-                    track.button.disabled = false; 
-                }, FADE_DURATION * 1000);
-            }
-
-            async function init() {
-                const trackUrls = await getTrackList();
-                if (trackUrls.length > 0) {
-                    trackUrls.forEach(createTrackButton);
-                } else if (!soundboard.innerHTML) {
-                     soundboard.innerHTML = '<p>No audio tracks found in the specified folder.</p>';
+        
+                async function init() {
+                    const trackUrls = await getTrackList();
+                    if (trackUrls.length > 0) {
+                        trackUrls.forEach(createTrackButton);
+                    } else if (!soundboard.innerHTML) {
+                         soundboard.innerHTML = '<p>No audio tracks found in the specified folder.</p>';
+                    }
                 }
-            }
-
-            init();
-        });
-    </script>
+        
+                init();
+            });
+        </script>
 
 </body>
 </html>
