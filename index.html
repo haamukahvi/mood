@@ -11,7 +11,7 @@
     
         <style>
             :root {
-                --bg-color: #1a1a1a;
+                --bg-color: #1d242b;
                 --primary-color: #2c3e50;
                 --secondary-color: #34495e;
                 --accent-color: #008080;
@@ -91,19 +91,20 @@
                 padding: 1.5rem 1rem;
                 cursor: pointer;
                 border-radius: 50px; 
-                font-size: 1rem;
+                font-size: 0.75rem;
                 font-weight: 400;
                 letter-spacing: 1px;
-                transition: all 0.3s ease;
+                transition: all 0.5s ease;
                 box-shadow: 0 4px 8px var(--shadow-color);
                 overflow: hidden;
                 text-overflow: ellipsis;
                 white-space: nowrap;
+                text-transform: uppercase;
             }
         
             .track-button:hover:not(:disabled):not(.active) {
                 background-color: var(--secondary-color);
-                transform: translateY(-3px);
+                transform: translateY(-8px);
                 box-shadow: 0 6px 12px var(--shadow-color);
             }
         
@@ -117,11 +118,10 @@
         
             .track-button.active:hover {
                 background-color: var(--accent-secondary-color);
-                transform: translateY(-3px);
+                transform: translateY(-8px);
             }
             
             .track-button:disabled {
-                cursor: not-allowed;
                 background-color: transparent;
                 border: 2px dashed var(--accent-color);
                 color: var(--accent-color);
@@ -135,7 +135,7 @@
 
     <h1>
         mood
-        <button id="sleepTimerButton">30 MIN SLEEP</button>
+        <button id="sleepTimerButton">30:00 TIMER</button>
     </h1>
     <div id="soundboard">
         </div>
@@ -143,11 +143,14 @@
         <script>
             document.addEventListener('DOMContentLoaded', () => {
                 const soundboard = document.getElementById('soundboard');
-                const sleepTimerButton = document.getElementById('sleepTimerButton'); // NEW
+                const sleepTimerButton = document.getElementById('sleepTimerButton');
                 const audioContext = new (window.AudioContext || window.webkitAudioContext)();
                 const activeTracks = {};
         
-                let sleepTimer = null; // NEW: To hold the timer ID
+                // NEW: Variables to manage the timer state
+                let sleepTimeoutId = null;
+                let countdownIntervalId = null;
+                let timeRemaining = 30 * 60; // 30 minutes in seconds
         
                 const repoOwner = 'haamukahvi';
                 const repoName = 'mood';
@@ -155,36 +158,64 @@
                 
                 const FADE_DURATION = 3; 
         
-                // NEW: Function to start the sleep timer
-                function startSleepTimer() {
-                    if (sleepTimer) {
-                        // Timer is already running, do nothing
-                        return;
-                    }
+                // --- TIMER LOGIC ---
         
-                    sleepTimerButton.classList.add('active');
-                    sleepTimerButton.disabled = true;
-        
-                    const thirtyMinutes = 30 * 60 * 1000;
-                    sleepTimer = setTimeout(() => {
-                        fadeOutAllTracks();
-                        sleepTimerButton.classList.remove('active');
-                        sleepTimerButton.disabled = false;
-                        sleepTimer = null; // Reset the timer
-                    }, thirtyMinutes);
+                function updateCountdownDisplay() {
+                    const minutes = Math.floor(timeRemaining / 60);
+                    const seconds = timeRemaining % 60;
+                    // Pad seconds with a leading zero if needed
+                    const formattedSeconds = seconds < 10 ? '0' + seconds : seconds;
+                    sleepTimerButton.textContent = `SLEEP ${minutes}:${formattedSeconds}`;
                 }
         
-                // NEW: Function to fade out all currently playing tracks
+                function startSleepTimer() {
+                    if (sleepTimeoutId) return; // Already running
+        
+                    sleepTimerButton.classList.add('active');
+                    
+                    // Start the final fade-out timer
+                    sleepTimeoutId = setTimeout(fadeOutAllTracks, timeRemaining * 1000);
+        
+                    // Start the visual countdown interval
+                    countdownIntervalId = setInterval(() => {
+                        timeRemaining--;
+                        updateCountdownDisplay();
+                        if (timeRemaining <= 0) {
+                            stopSleepTimer(); // Clears interval and resets button
+                        }
+                    }, 1000);
+                }
+        
+                function stopSleepTimer() {
+                    clearTimeout(sleepTimeoutId);
+                    clearInterval(countdownIntervalId);
+        
+                    sleepTimeoutId = null;
+                    countdownIntervalId = null;
+                    timeRemaining = 30 * 60; // Reset time
+        
+                    sleepTimerButton.classList.remove('active');
+                    updateCountdownDisplay(); // Reset the text to 30:00
+                }
+        
+                function toggleSleepTimer() {
+                    if (countdownIntervalId) {
+                        // If the interval is running, stop the timer
+                        stopSleepTimer();
+                    } else {
+                        // Otherwise, start it
+                        startSleepTimer();
+                    }
+                }
+        
                 function fadeOutAllTracks() {
                     const FADEOUT_DURATION = 60; // 1 minute fade-out
                     for (const url in activeTracks) {
                         const track = activeTracks[url];
                         
-                        // Set current volume and then ramp down
                         track.gainNode.gain.setValueAtTime(track.gainNode.gain.value, audioContext.currentTime);
                         track.gainNode.gain.linearRampToValueAtTime(0, audioContext.currentTime + FADEOUT_DURATION);
         
-                        // Clean up after the fade is complete
                         setTimeout(() => {
                             track.audio.pause();
                             track.source.disconnect();
@@ -193,6 +224,9 @@
                         }, FADEOUT_DURATION * 1000);
                     }
                 }
+        
+        
+                // --- SOUNDBOARD LOGIC (Unchanged) ---
         
                 async function getTrackList() {
                     const apiUrl = `https://api.github.com/repos/${repoOwner}/${repoName}/contents/${tracksPath}`;
@@ -286,8 +320,8 @@
                 }
         
                 async function init() {
-                    // NEW: Add event listener to the timer button
-                    sleepTimerButton.addEventListener('click', startSleepTimer);
+                    // CHANGED: The button now toggles the timer
+                    sleepTimerButton.addEventListener('click', toggleSleepTimer);
         
                     const trackUrls = await getTrackList();
                     if (trackUrls.length > 0) {
