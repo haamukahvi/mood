@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>D&D Ambience Player</title>
+    <title>mood</title>
     <style>
         :root {
             --bg-color: #1a1a1a;
@@ -12,6 +12,7 @@
             --accent-color: #008080;
             --text-color: #ecf0f1;
             --shadow-color: rgba(0, 0, 0, 0.5);
+            --disabled-color: #555;
         }
 
         body {
@@ -53,7 +54,7 @@
             white-space: nowrap;
         }
 
-        .track-button:hover {
+        .track-button:hover:not(:disabled) {
             background-color: var(--secondary-color);
             transform: translateY(-3px);
             box-shadow: 0 6px 12px var(--shadow-color);
@@ -66,11 +67,20 @@
             box-shadow: 0 0 15px var(--accent-color);
             border-color: var(--accent-color);
         }
+        
+        /* Added style for the disabled (transitioning) state */
+        .track-button:disabled {
+            cursor: not-allowed;
+            background-color: var(--disabled-color);
+            opacity: 0.6;
+            transform: none;
+            box-shadow: none;
+        }
     </style>
 </head>
 <body>
 
-    <h1>D&D Ambience Player</h1>
+    <h1>mood</h1>
     <div id="soundboard">
         </div>
 
@@ -83,6 +93,7 @@
             const repoOwner = 'haamukahvi';
             const repoName = 'mood';
             const tracksPath = 'tracks';
+            const FADE_DURATION = 2; // Fade time in seconds
 
             async function getTrackList() {
                 const apiUrl = `https://api.github.com/repos/${repoOwner}/${repoName}/contents/${tracksPath}`;
@@ -107,6 +118,11 @@
                 button.dataset.url = url;
 
                 button.addEventListener('click', () => {
+                    // Prevent action if the audio context is not running (e.g., requires user interaction)
+                    if (audioContext.state === 'suspended') {
+                        audioContext.resume();
+                    }
+
                     if (activeTracks[url]) {
                         stopTrack(url);
                     } else {
@@ -118,9 +134,8 @@
             }
 
             async function playTrack(url, button) {
-                if (audioContext.state === 'suspended') {
-                    await audioContext.resume();
-                }
+                // --- FIX: Disable button during transition ---
+                button.disabled = true;
 
                 const audio = new Audio(url);
                 audio.crossOrigin = "anonymous";
@@ -128,32 +143,56 @@
 
                 const source = audioContext.createMediaElementSource(audio);
                 const gainNode = audioContext.createGain();
-
                 gainNode.gain.setValueAtTime(0, audioContext.currentTime);
 
                 source.connect(gainNode);
                 gainNode.connect(audioContext.destination);
 
-                await audio.play();
-                gainNode.gain.linearRampToValueAtTime(1, audioContext.currentTime + 2); // 2-second fade-in
+                try {
+                    await audio.play();
+                    gainNode.gain.linearRampToValueAtTime(1, audioContext.currentTime + FADE_DURATION);
 
-                activeTracks[url] = { audio, source, gainNode, button };
-                button.classList.add('active');
+                    activeTracks[url] = { audio, source, gainNode, button };
+                    button.classList.add('active');
+
+                    // --- FIX: Re-enable button after fade-in is complete ---
+                    setTimeout(() => {
+                        // Only re-enable if the track is still supposed to be active
+                        if (activeTracks[url]) {
+                            button.disabled = false;
+                        }
+                    }, FADE_DURATION * 1000);
+
+                } catch (err) {
+                    console.error("Playback failed:", err);
+                    // Re-enable button on error
+                    button.disabled = false; 
+                }
             }
 
             function stopTrack(url) {
                 const track = activeTracks[url];
                 if (!track) return;
 
-                track.gainNode.gain.linearRampToValueAtTime(0, audioContext.currentTime + 2); // 2-second fade-out
+                // --- FIX: Disable button during transition ---
+                track.button.disabled = true;
+                track.button.classList.remove('active');
 
+                track.gainNode.gain.linearRampToValueAtTime(0, audioContext.currentTime + FADE_DURATION);
+                
+                // --- FIX: Delay cleanup until after fade-out ---
+                // This is the most critical change. We wait for the fade to finish before
+                // pausing the audio and deleting the track from our active list.
                 setTimeout(() => {
                     track.audio.pause();
                     track.source.disconnect();
+                    
+                    // --- FIX: Correctly manage state AFTER the fade ---
                     delete activeTracks[url];
-                }, 2000);
-
-                track.button.classList.remove('active');
+                    
+                    // Re-enable the button so it can be played again
+                    track.button.disabled = false; 
+                }, FADE_DURATION * 1000);
             }
 
             async function init() {
