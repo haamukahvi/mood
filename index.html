@@ -15,6 +15,7 @@
                 --primary-color: #2c3e50;
                 --secondary-color: #34495e;
                 --accent-color: #008080;
+                --accent-secondary-color: #009e9e;
                 --text-color: #ecf0f1;
                 --shadow-color: rgba(0, 0, 0, 0.5);
             }
@@ -43,6 +44,7 @@
                 display: grid;
                 grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
                 gap: 1.5rem;
+                text-transform: uppercase;
                 
                 /* CHANGED: Max width is now 1600px */
                 max-width: 1600px; 
@@ -80,6 +82,11 @@
                 box-shadow: 0 0 15px var(--accent-color);
                 border-color: var(--accent-color);
             }
+
+            .track-button.active:hover {
+                background-color: var(--accent-secondary-color);
+                transform: translateY(-3px);
+            }
             
             .track-button:disabled {
                 cursor: not-allowed;
@@ -108,7 +115,6 @@
                 const repoName = 'mood';
                 const tracksPath = 'tracks';
                 
-                // CHANGED: Fade time is now 3 seconds
                 const FADE_DURATION = 3; 
         
                 async function getTrackList() {
@@ -158,7 +164,6 @@
                     const source = audioContext.createMediaElementSource(audio);
                     const gainNode = audioContext.createGain();
                     
-                    // Reverted to 0 for linear ramp
                     gainNode.gain.setValueAtTime(0, audioContext.currentTime);
         
                     source.connect(gainNode);
@@ -167,7 +172,6 @@
                     try {
                         await audio.play();
                         
-                        // CHANGED: Using linearRamp for a linear fade-in
                         gainNode.gain.linearRampToValueAtTime(1, audioContext.currentTime + FADE_DURATION);
         
                         activeTracks[url] = { audio, source, gainNode, button };
@@ -192,8 +196,8 @@
                     track.button.disabled = true;
                     track.button.classList.remove('active');
         
-                    // CHANGED: Using linearRamp for a linear fade-out
-                    track.gainNode.linearRampToValueAtTime(0, audioContext.currentTime + FADE_DURATION);
+                    // --- FIX: The ramp function must be called on the .gain property ---
+                    track.gainNode.gain.linearRampToValueAtTime(0, audioContext.currentTime + FADE_DURATION);
                     
                     setTimeout(() => {
                         track.audio.pause();
