@@ -1,83 +1,97 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>mood</title>
-    <style>
-        :root {
-            --bg-color: #1a1a1a;
-            --primary-color: #2c3e50;
-            --secondary-color: #34495e;
-            --accent-color: #008080;
-            --text-color: #ecf0f1;
-            --shadow-color: rgba(0, 0, 0, 0.5);
-            --disabled-color: #555;
-        }
-
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: var(--bg-color);
-            color: var(--text-color);
-            margin: 0;
-            padding: 2rem;
-            text-align: center;
-        }
-
-        h1 {
-            color: var(--accent-color);
-            font-weight: 300;
-            letter-spacing: 2px;
-            text-transform: uppercase;
-        }
-
-        #soundboard {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-            gap: 1rem;
-            max-width: 1200px;
-            margin: 2rem auto;
-        }
-
-        .track-button {
-            background-color: var(--primary-color);
-            border: 2px solid var(--secondary-color);
-            color: var(--text-color);
-            padding: 1.5rem 1rem;
-            cursor: pointer;
-            border-radius: 8px;
-            font-size: 1rem;
-            transition: all 0.3s ease;
-            box-shadow: 0 4px 8px var(--shadow-color);
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-        }
-
-        .track-button:hover:not(:disabled) {
-            background-color: var(--secondary-color);
-            transform: translateY(-3px);
-            box-shadow: 0 6px 12px var(--shadow-color);
-        }
-
-        .track-button.active {
-            background-color: var(--accent-color);
-            color: var(--bg-color);
-            font-weight: bold;
-            box-shadow: 0 0 15px var(--accent-color);
-            border-color: var(--accent-color);
-        }
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>mood</title>
         
-        /* Added style for the disabled (transitioning) state */
-        .track-button:disabled {
-            cursor: not-allowed;
-            background-color: var(--disabled-color);
-            opacity: 0.6;
-            transform: none;
-            box-shadow: none;
-        }
-    </style>
-</head>
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link href="https://fonts.googleapis.com/css2?family=Saira:wght@200;400&display=swap" rel="stylesheet">
+    
+        <style>
+            :root {
+                --bg-color: #1a1a1a;
+                --primary-color: #2c3e50;
+                --secondary-color: #34495e;
+                --accent-color: #008080;
+                --text-color: #ecf0f1;
+                --shadow-color: rgba(0, 0, 0, 0.5);
+            }
+    
+            body {
+                /* CHANGED: Font family, weight, and text transform */
+                font-family: 'Saira', sans-serif;
+                font-weight: 200;
+                text-transform: uppercase;
+                
+                background-color: var(--bg-color);
+                color: var(--text-color);
+                margin: 0;
+                padding: 2rem;
+                text-align: center;
+            }
+    
+            h1 {
+                color: var(--accent-color);
+                font-weight: 200; /* Lighter weight for consistency */
+                letter-spacing: 4px; /* Increased spacing for uppercase */
+            }
+    
+            #soundboard {
+                display: grid;
+                grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+                gap: 1.5rem; /* Slightly increased gap */
+                max-width: 1200px;
+                margin: 2rem auto;
+            }
+    
+            .track-button {
+                background-color: var(--primary-color);
+                border: 2px solid var(--secondary-color);
+                color: var(--text-color);
+                padding: 1.5rem 1rem;
+                cursor: pointer;
+                
+                /* CHANGED: Much rounder corners */
+                border-radius: 50px; 
+                
+                font-size: 1rem;
+                font-weight: 400; /* Bolder font for button text */
+                letter-spacing: 1px;
+                transition: all 0.3s ease;
+                box-shadow: 0 4px 8px var(--shadow-color);
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+            }
+    
+            .track-button:hover:not(:disabled) {
+                background-color: var(--secondary-color);
+                transform: translateY(-3px);
+                box-shadow: 0 6px 12px var(--shadow-color);
+            }
+    
+            .track-button.active {
+                background-color: var(--accent-color);
+                color: var(--bg-color);
+                font-weight: 400;
+                box-shadow: 0 0 15px var(--accent-color);
+                border-color: var(--accent-color);
+            }
+            
+            /* CHANGED: New style for the disabled (transitioning) state */
+            .track-button:disabled {
+                cursor: not-allowed;
+                background-color: transparent; /* Transparent background */
+                border: 2px dashed var(--accent-color); /* Dashed accent-color border */
+                color: var(--accent-color); /* Text color matches the border */
+                opacity: 0.7;
+                transform: none;
+                box-shadow: none;
+            }
+        </style>
+    </head>
 <body>
 
     <h1>mood</h1>
