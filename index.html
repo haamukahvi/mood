@@ -57,7 +57,8 @@
                 border-radius: 50px; 
                 
                 font-size: 1rem;
-                font-weight: 400; /* Bolder font for button text */
+                font-weight: 200; /* Bolder font for button text */
+                text-transform: uppercase;
                 letter-spacing: 1px;
                 transition: all 0.3s ease;
                 box-shadow: 0 4px 8px var(--shadow-color);
@@ -68,15 +69,15 @@
     
             .track-button:hover:not(:disabled) {
                 background-color: var(--secondary-color);
-                transform: translateY(-3px);
+                transform: translateY(-5px);
                 box-shadow: 0 6px 12px var(--shadow-color);
             }
     
             .track-button.active {
                 background-color: var(--accent-color);
                 color: var(--bg-color);
-                font-weight: 400;
-                box-shadow: 0 0 15px var(--accent-color);
+                font-weight: 200;
+                box-shadow: 0 0 25px var(--accent-color);
                 border-color: var(--accent-color);
             }
             
@@ -107,7 +108,7 @@
                 const repoOwner = 'haamukahvi';
                 const repoName = 'mood';
                 const tracksPath = 'tracks';
-                const FADE_DURATION = 2; // Fade time in seconds
+                const FADE_DURATION = 4; // Fade time in seconds
                 const MIN_VOLUME = 0.0001; // A tiny value, effectively silent
         
                 async function getTrackList() {
