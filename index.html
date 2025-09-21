@@ -19,7 +19,7 @@
                 --text-color: #ecf0f1;
                 --shadow-color: rgba(0, 0, 0, 0.5);
             }
-    
+        
             body {
                 font-family: 'Saira', sans-serif;
                 font-weight: 200;
@@ -30,27 +30,60 @@
                 padding: 2rem;
                 text-align: center;
             }
-    
+        
+            /* MODIFIED: Converted to flexbox for button alignment */
             h1 {
                 color: var(--accent-color);
                 font-weight: 200;
                 letter-spacing: 4px;
-                
-                /* CHANGED: Title is now 1.5x bigger */
-                font-size: 3em; 
+                font-size: 3em;
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                position: relative; /* Needed for absolute positioning of the button */
             }
-    
+        
+            /* NEW: Styles for the sleep timer button */
+            #sleepTimerButton {
+                font-family: 'Saira', sans-serif;
+                font-weight: 400;
+                text-transform: uppercase;
+                letter-spacing: 1px;
+                font-size: 0.4em; /* Relative to the h1 font size */
+                background-color: transparent;
+                border: 2px solid var(--secondary-color);
+                color: var(--secondary-color);
+                border-radius: 50px;
+                padding: 0.5em 1em;
+                cursor: pointer;
+                transition: all 0.3s ease;
+                position: absolute; /* Position it on the right */
+                right: 0;
+            }
+        
+            #sleepTimerButton:hover {
+                border-color: var(--accent-color);
+                color: var(--accent-color);
+            }
+        
+            /* NEW: Style for when the timer is active */
+            #sleepTimerButton.active {
+                border-color: var(--accent-color);
+                color: var(--bg-color);
+                background-color: var(--accent-color);
+                cursor: default;
+            }
+        
+        
             #soundboard {
                 display: grid;
                 grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
                 gap: 1.5rem;
                 text-transform: uppercase;
-                
-                /* CHANGED: Max width is now 1600px */
                 max-width: 1600px; 
                 margin: 2rem auto;
             }
-    
+        
             .track-button {
                 background-color: var(--primary-color);
                 border: 2px solid var(--secondary-color);
@@ -67,14 +100,13 @@
                 text-overflow: ellipsis;
                 white-space: nowrap;
             }
-    
-            /* CHANGED: Hover effect no longer applies to active buttons */
+        
             .track-button:hover:not(:disabled):not(.active) {
                 background-color: var(--secondary-color);
                 transform: translateY(-3px);
                 box-shadow: 0 6px 12px var(--shadow-color);
             }
-    
+        
             .track-button.active {
                 background-color: var(--accent-color);
                 color: var(--bg-color);
@@ -82,7 +114,7 @@
                 box-shadow: 0 0 15px var(--accent-color);
                 border-color: var(--accent-color);
             }
-
+        
             .track-button.active:hover {
                 background-color: var(--accent-secondary-color);
                 transform: translateY(-3px);
@@ -101,21 +133,66 @@
     </head>
 <body>
 
-    <h1>mood</h1>
+    <h1>
+        mood
+        <button id="sleepTimerButton">30 MIN SLEEP</button>
+    </h1>
     <div id="soundboard">
         </div>
 
         <script>
             document.addEventListener('DOMContentLoaded', () => {
                 const soundboard = document.getElementById('soundboard');
+                const sleepTimerButton = document.getElementById('sleepTimerButton'); // NEW
                 const audioContext = new (window.AudioContext || window.webkitAudioContext)();
                 const activeTracks = {};
+        
+                let sleepTimer = null; // NEW: To hold the timer ID
         
                 const repoOwner = 'haamukahvi';
                 const repoName = 'mood';
                 const tracksPath = 'tracks';
                 
                 const FADE_DURATION = 3; 
+        
+                // NEW: Function to start the sleep timer
+                function startSleepTimer() {
+                    if (sleepTimer) {
+                        // Timer is already running, do nothing
+                        return;
+                    }
+        
+                    sleepTimerButton.classList.add('active');
+                    sleepTimerButton.disabled = true;
+        
+                    const thirtyMinutes = 30 * 60 * 1000;
+                    sleepTimer = setTimeout(() => {
+                        fadeOutAllTracks();
+                        sleepTimerButton.classList.remove('active');
+                        sleepTimerButton.disabled = false;
+                        sleepTimer = null; // Reset the timer
+                    }, thirtyMinutes);
+                }
+        
+                // NEW: Function to fade out all currently playing tracks
+                function fadeOutAllTracks() {
+                    const FADEOUT_DURATION = 60; // 1 minute fade-out
+                    for (const url in activeTracks) {
+                        const track = activeTracks[url];
+                        
+                        // Set current volume and then ramp down
+                        track.gainNode.gain.setValueAtTime(track.gainNode.gain.value, audioContext.currentTime);
+                        track.gainNode.gain.linearRampToValueAtTime(0, audioContext.currentTime + FADEOUT_DURATION);
+        
+                        // Clean up after the fade is complete
+                        setTimeout(() => {
+                            track.audio.pause();
+                            track.source.disconnect();
+                            track.button.classList.remove('active');
+                            delete activeTracks[url];
+                        }, FADEOUT_DURATION * 1000);
+                    }
+                }
         
                 async function getTrackList() {
                     const apiUrl = `https://api.github.com/repos/${repoOwner}/${repoName}/contents/${tracksPath}`;
@@ -127,7 +204,7 @@
                             .map(file => file.download_url);
                     } catch (error) {
                         console.error('Error fetching track list:', error);
-                        soundboard.innerHTML = '<p style="color: #e74c3c;">Failed to load tracks from GitHub. Please check the repository path and make sure it\'s public.</p>';
+                        soundboard.innerHTML = `<p style="color: #e74c3c;">Failed to load tracks from GitHub. Please check the repository path and make sure it's public.</p>`;
                         return [];
                     }
                 }
@@ -196,7 +273,6 @@
                     track.button.disabled = true;
                     track.button.classList.remove('active');
         
-                    // --- FIX: The ramp function must be called on the .gain property ---
                     track.gainNode.gain.linearRampToValueAtTime(0, audioContext.currentTime + FADE_DURATION);
                     
                     setTimeout(() => {
@@ -210,11 +286,14 @@
                 }
         
                 async function init() {
+                    // NEW: Add event listener to the timer button
+                    sleepTimerButton.addEventListener('click', startSleepTimer);
+        
                     const trackUrls = await getTrackList();
                     if (trackUrls.length > 0) {
                         trackUrls.forEach(createTrackButton);
                     } else if (!soundboard.innerHTML) {
-                         soundboard.innerHTML = '<p>No audio tracks found in the specified folder.</p>';
+                         soundboard.innerHTML = `<p>No audio tracks found in the specified folder.</p>`;
                     }
                 }
         
